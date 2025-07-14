@@ -148,7 +148,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 	{
 		//Super User can not delete data.
 		int AD_User_ID = Env.getAD_User_ID(Env.getCtx());
-		if(AD_User_ID==100)//AD_User_ID == 100 that is SuperUser
+		if(AD_User_ID!=100)//AD_User_ID == 100 that is SuperUser
 		{
 			//Super User can not execute this process. Please relogin System user or others that can login System client.
 			String msg = Msg.getMsg(getCtx(), "JP_Delete_SuperUser_CanNot");
@@ -312,7 +312,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 
 		createLog("", "", "##### DELETE U_RoleMenu Table that data  may be inconsistent #####", "", "", "",false);
 		ArrayList<Integer> AD_Role_IDs = getIDList("AD_Role_ID", "AD_Role", "AD_Client_ID = 0", TYPE_ALL_TRANSACTION);
-		executeDeleteSQL("U_RoleMenu", createWhereInIDs("AD_Role_ID", AD_Role_IDs, WHERE_NOT_IN), TYPE_ALL_TRANSACTION, false,"BEFORE_PROCESS");
+		executeDeleteSQL("U_RoleMenu", createWhereInIDs("U_RoleMenu", "AD_Role_ID", AD_Role_IDs, WHERE_NOT_IN), TYPE_ALL_TRANSACTION, false,"BEFORE_PROCESS");
 		commitEx();
 		createLog("", "", "COMMIT", "", "", "",false);
 
@@ -335,7 +335,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 		{
 			createLog("", "", "### DELETE AD_Preference Table that data may be inconsistent ###", "", "", "",false);
 			ArrayList<Integer> AD_User_IDs = getIDList("AD_User_ID", "AD_User", "AD_Client_ID <> " + p_LookupClientID, TYPE_ALL_TRANSACTION);
-			executeDeleteSQL("AD_Preference", createWhereInIDs("AD_User_ID", AD_User_IDs, WHERE_NOT_IN) + " AND AD_Client_ID <> " + p_LookupClientID
+			executeDeleteSQL("AD_Preference", createWhereInIDs("AD_Preference", "AD_User_ID", AD_User_IDs, WHERE_NOT_IN) + " AND AD_Client_ID <> " + p_LookupClientID
 																										, TYPE_ALL_TRANSACTION, false, "BEFORE_PROCESS");
 			commitEx();
 			createLog("", "", "COMMIT", "", "", "",false);
@@ -839,7 +839,8 @@ public class JPiereDeleteClientRecords extends SvrProcess
 		{
 			JP_CustomDeleteProfile_ID =customDeleteProfiles[i].get_ID();//for logging
 			m_Table = MTable.get(getCtx(), customDeleteProfiles[i].getAD_Table_ID());
-			if(m_Table.columnExistsInDictionary("EntityType"))
+			//As Libero Manufacturing workflow are part of tenant data, should allow to delete it
+			if(!"AD_Workflow".equalsIgnoreCase(m_Table.getName()) && m_Table.columnExistsInDictionary("EntityType"))
 			{
 				createLog("","","##### DON'T DELETE " + m_Table.getTableName() + " #####", "","",Msg.getMsg(getCtx(), "JP_Delete_ADTable"), false);
 				continue;
@@ -881,7 +882,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 					int value = customDeleteProfiles[i].getJP_ForeignKey_Value();
 
 
-					executeDeleteSQL(tableName, createWhereInIDs(tableName+"_ID", IDs, WHERE_NOT_IN), deleteProfile.getJP_Delete_Client(), p_IsTruncateJP,"CUSTOM_TABLE_DELETE");
+					executeDeleteSQL(tableName, createWhereInIDs(tableName, tableName+"_ID", IDs, WHERE_NOT_IN), deleteProfile.getJP_Delete_Client(), p_IsTruncateJP,"CUSTOM_TABLE_DELETE");
 					bulkUpdate_canReferTableDirect(tableName, IDs, WHERE_NOT_IN, treat, value, excludeTables, WHERE_NOT_IN, deleteProfile.getJP_Delete_Client());
 					bulkUpdate_canNotReferTableDirect(tableName, IDs, WHERE_NOT_IN, treat, value, excludeTables, WHERE_NOT_IN, deleteProfile.getJP_Delete_Client());
 
@@ -893,7 +894,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 						String lineTreat = m_ProfileLines[j].getJP_TreatForeignKey();
 						int lineValue =  m_ProfileLines[j].getJP_ForeignKey_Value();
 						executeUpdateSQL(lineTableName, linkColumn, lineTreat, lineValue
-								, createWhereInIDs(linkColumn, IDs, WHERE_NOT_IN), deleteProfile.getJP_Delete_Client(),"CUSTOM_TABLE_LINE_UPDATE");
+								, createWhereInIDs(lineTableName, linkColumn, IDs, WHERE_NOT_IN), deleteProfile.getJP_Delete_Client(),"CUSTOM_TABLE_LINE_UPDATE");
 					}//for
 				}
 				JP_CustomDeleteProfileLine_ID = 0;//for logging
@@ -1345,7 +1346,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 		createLog("","","####### UPDATE ORG BEFORE DELETE #######", "","","", true);
 
 		//C_BPartner.AD_OrgBP_ID
-		executeUpdateSQL("C_BPartner", "AD_OrgBP_ID", TREAT_SET_NULL, 0, createWhereInIDs("AD_OrgBP_ID", AD_Org_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT);
+		executeUpdateSQL("C_BPartner", "AD_OrgBP_ID", TREAT_SET_NULL, 0, createWhereInIDs("C_BPartner", "AD_OrgBP_ID", AD_Org_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT);
 
 		//Account Schemas
 		MAcctSchema[] acctSchemas = MAcctSchema.getClientAcctSchema(getCtx(), p_LookupClientID);
@@ -1444,7 +1445,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 		bulkUpdate_Log(returnInt, "AD_Org", DEBUG_BULK_UPDATE_LOG);
 
 		createLog("","","####### DELETE AD_Org TABLE #######", "","","", true);
-		executeDeleteSQL("AD_Org", createWhereInIDs("AD_Org_ID", AD_Org_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_ORG");
+		executeDeleteSQL("AD_Org", createWhereInIDs("AD_Org", "AD_Org_ID", AD_Org_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_ORG");
 
 		commitEx();
 		createLog("", "", "COMMIT", "", "", "",false);
@@ -1483,7 +1484,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 		ArrayList<Integer> AD_Role_IDs = getIDList("AD_Role_ID", "AD_Role", where, TYPE_INITIALIZE_CLIENT);
 		AD_Role_IDs.add(0);//System Administrator
 
-		executeDeleteSQL("PA_DashboardPreference", createWhereInIDs("AD_Role_ID", AD_Role_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
+		executeDeleteSQL("PA_DashboardPreference", createWhereInIDs("PA_DashboardPreference", "AD_Role_ID", AD_Role_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
 
 		String[] tables = {
 				"AD_WF_Responsible","PA_DashboardPreference"
@@ -1502,7 +1503,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 				, stringArray_Subtraction(Tables_Not_DeleteAllRecords, tables), WHERE_IN, TYPE_INITIALIZE_CLIENT);
 		bulkUpdate_Log(returnInt, "AD_Role", DEBUG_BULK_UPDATE_LOG);
 
-		executeDeleteSQL("AD_Role", createWhereInIDs("AD_Role_ID", AD_Role_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false, "DELETE_ROLE");
+		executeDeleteSQL("AD_Role", createWhereInIDs("AD_Role", "AD_Role_ID", AD_Role_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false, "DELETE_ROLE");
 
 		return "";
 	}
@@ -1539,9 +1540,9 @@ public class JPiereDeleteClientRecords extends SvrProcess
 
 		createLog("", "", "####### DELETE PREFERENCE #######","","","",true);
 		//AD_Preference
-		executeDeleteSQL("AD_Preference", createWhereInIDs("AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
-		executeDeleteSQL("PA_DashboardPreference", createWhereInIDs("AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
-		executeDeleteSQL("AD_Password_History", createWhereInIDs("AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
+		executeDeleteSQL("AD_Preference", createWhereInIDs("AD_Preference", "AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
+		executeDeleteSQL("PA_DashboardPreference", createWhereInIDs("PA_DashboardPreference", "AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
+		executeDeleteSQL("AD_Password_History", createWhereInIDs("AD_Password_History", "AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
 
 		String[] tables = {
 				"AD_Preference","PA_DashboardPreference","AD_Password_History"
@@ -1560,7 +1561,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 		bulkUpdate_Log(returnInt, "AD_User", DEBUG_BULK_UPDATE_LOG);
 
 		createLog("", "", "####### DELETE AD_User TABLE #######","","","",true);
-		executeDeleteSQL("AD_User", createWhereInIDs("AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
+		executeDeleteSQL("AD_User", createWhereInIDs("AD_User", "AD_User_ID", AD_User_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false,"DELETE_USER");
 
 		return "";
 	}
@@ -1587,7 +1588,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 				, Tables_Not_DeleteAllRecords, WHERE_IN, TYPE_INITIALIZE_CLIENT);
 		bulkUpdate_Log(returnInt, "C_BPartner", DEBUG_BULK_UPDATE_LOG);
 
-		executeDeleteSQL("C_BPartner", createWhereInIDs("C_BPartner_ID", C_BP_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false, "DELETE_BP");
+		executeDeleteSQL("C_BPartner", createWhereInIDs("C_BPartner", "C_BPartner_ID", C_BP_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false, "DELETE_BP");
 
 		return "";
 	}
@@ -1618,7 +1619,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 				, stringArray_Subtraction(Tables_Not_DeleteAllRecords, tables), WHERE_IN, TYPE_INITIALIZE_CLIENT);
 		bulkUpdate_Log(returnInt, "M_Product", DEBUG_BULK_UPDATE_LOG);
 
-		executeDeleteSQL("M_Product", createWhereInIDs("M_Product_ID", M_Product_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false, "DELETE_PRODUCT");
+		executeDeleteSQL("M_Product", createWhereInIDs("M_Product", "M_Product_ID", M_Product_IDs, WHERE_NOT_IN), TYPE_INITIALIZE_CLIENT, false, "DELETE_PRODUCT");
 
 		return "";
 	}
@@ -2179,7 +2180,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 						continue;
 				}//if(tables != null)
 
-				executeUpdateSQL(rs.getString(1), tableName +"_ID", treat, value, createWhereInIDs(tableName +"_ID", IDs, isIN_IDs), type,"REFERENCE_DIRECT");
+				executeUpdateSQL(rs.getString(1), tableName +"_ID", treat, value, createWhereInIDs(rs.getString(1), tableName +"_ID", IDs, isIN_IDs), type,"REFERENCE_DIRECT");
 
 				processed++;
 
@@ -2274,7 +2275,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 				continue;
 
 
-			executeUpdateSQL(tableColumn.tableName, tableColumn.columnName, treat, value, createWhereInIDs(tableColumn.columnName, IDs, isIN_IDs), type,"REFERENCE_INDIRECT");
+			executeUpdateSQL(tableColumn.tableName, tableColumn.columnName, treat, value, createWhereInIDs(tableColumn.tableName, tableColumn.columnName, IDs, isIN_IDs), type,"REFERENCE_INDIRECT");
 
 			processed++;
 		}
@@ -2630,41 +2631,75 @@ public class JPiereDeleteClientRecords extends SvrProcess
 
 	}
 
-
 	/**
-	 * Create WHERE clause "Column_ID in (IDs)"
+	 * Creates a SQL WHERE clause for the given table and column filtering by the list of IDs.
+	 * Supports both scalar columns and multi-select (array) columns by detecting the column display type.
 	 *
-	 * @param column_ID : Column Name that Display Type is Table, Table Direct, Search, ID.
-	 * @param IDs : ID of Records
-	 * @return null or String
+	 * @param tableName   Table name
+	 * @param columnName  Column name that has display type Table, Table Direct, Search, ID, or Multi-Select
+	 * @param IDs         List of record IDs to filter
+	 * @param isIN        {@code true} for IN clause, {@code false} for NOT IN clause
+	 * @return            SQL WHERE clause string or {@code null} if inputs are invalid or column metadata not found
 	 */
-	private String createWhereInIDs(String column_ID, ArrayList<Integer> IDs, boolean isIN)
+	private String createWhereInIDs(String tableName, String columnName, ArrayList<Integer> IDs, boolean isIN)
 	{
-		if(column_ID == null)
+		if (columnName == null || columnName.trim().isEmpty() || tableName == null || tableName.trim().isEmpty())
 			return null;
 
-		if(IDs == null || IDs.size() == 0)
+		if (IDs == null || IDs.isEmpty())
+			return null;
+	    
+		int columnID = MColumn.getColumn_ID(tableName, columnName);
+		if (columnID <= 0)
 			return null;
 
-		StringBuilder where = new StringBuilder(column_ID);
-		if(isIN)
-			where.append(" IN (");
-		else
-			where.append(" Not IN (");
+		MColumn column = new MColumn(getCtx(), columnID, get_TrxName());
+		if (column == null || column.getAD_Reference_ID() == 0)
+			return null;
 
-		int i = 0;
-		for(Integer ID : IDs)
-		{
-			if(i==0)
-				where.append(ID.toString());
-			else
-				where.append("," + ID.toString());
-			i++;
-		}
-		where.append(")");
+		StringBuilder where = new StringBuilder();
 
-		return where.toString();
+	    if (DisplayType.isMultiSelect(column.getAD_Reference_ID()))
+	    {
+	    	// If isIN is false, we want rows where none of the IDs exist in the array column,
+	    	// so we wrap the condition with NOT ( ... ) to negate the overlap check.
+	        if (!isIN)
+	            where.append("NOT (");
+
+	    	// The "&&" operator checks if the array column overlaps with the given array of IDs.
+	    	// So, columnName && ARRAY[...] returns true if there is any common element.
+	        where.append(columnName).append(" && ARRAY[");
+
+	        for (int i = 0; i < IDs.size(); i++)
+	        {
+	            if (i > 0)
+	                where.append(", ");
+	            where.append(IDs.get(i));
+	        }
+
+	        where.append("]::numeric[]");
+
+	        if (!isIN)
+	            where.append(")");
+	    }
+	    else
+	    {
+	        where.append(columnName);
+	        where.append(isIN ? " IN (" : " NOT IN (");
+
+	        for (int i = 0; i < IDs.size(); i++)
+	        {
+	            if (i > 0)
+	                where.append(", ");
+	            where.append(IDs.get(i));
+	        }
+
+	        where.append(")");
+	    }
+
+	    return where.toString();
 	}
+
 
 	public ArrayList<TableColumn> getIndirectReferTableColumn(String column_ID, ArrayList<Integer> referenceList)
 	{
@@ -2678,7 +2713,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 				getTableColumnSQL.append(",");
 			getTableColumnSQL.append(referenceList.get(i).toString());
 		}
-		getTableColumnSQL.append(") AND UPPER (columnname) <> '" + column_ID.toUpperCase() +"' AND t.ad_table_id = c.ad_table_id AND t.IsView='N' ");
+		getTableColumnSQL.append(") AND UPPER (columnname) <> '" + column_ID.toUpperCase() +"' AND t.ad_table_id = c.ad_table_id AND t.IsView='N' AND c.ColumnSQL IS NULL ");
 
 		try
 		{
