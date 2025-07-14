@@ -840,7 +840,7 @@ public class JPiereDeleteClientRecords extends SvrProcess
 			JP_CustomDeleteProfile_ID =customDeleteProfiles[i].get_ID();//for logging
 			m_Table = MTable.get(getCtx(), customDeleteProfiles[i].getAD_Table_ID());
 			//As Libero Manufacturing workflow are part of tenant data, should allow to delete it
-			if(!"AD_Workflow".equalsIgnoreCase(m_Table.getName()) && m_Table.columnExistsInDictionary("EntityType"))
+			if(!"AD_Workflow".equalsIgnoreCase(m_Table.getTableName()) && m_Table.columnExistsInDictionary("EntityType"))
 			{
 				createLog("","","##### DON'T DELETE " + m_Table.getTableName() + " #####", "","",Msg.getMsg(getCtx(), "JP_Delete_ADTable"), false);
 				continue;
